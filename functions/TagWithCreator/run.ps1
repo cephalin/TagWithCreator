@@ -1,7 +1,6 @@
 param($eventGridEvent, $TriggerMetadata)
 
-#$caller = $eventGridEvent.data.claims.name
-$caller = $eventGridEvent.data.claims."http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"
+$caller = $eventGridEvent.data.claims.name
 if ($null -eq $caller) {
     if ($eventGridEvent.data.authorization.evidence.principalType -eq "ServicePrincipal") {
         $caller = (Get-AzADServicePrincipal -ObjectId $eventGridEvent.data.authorization.evidence.principalId).DisplayName
@@ -21,22 +20,15 @@ if (($null -eq $caller) -or ($null -eq $resourceId)) {
     exit;
 }
 
-$ignore = @(
-    "providers/Microsoft.Resources/deployments",
-    "providers/Microsoft.Resources/tags",
-    "providers/Microsoft.Network/frontdoor"
-)
-
-foreach ($case in $ignore) {
-    if ($resourceId -match $case) {
-        Write-Host "Skipping event as resourceId ignorelist contains: $case"
-        exit;
-    }
-}
 #Write-Host "Try add Creator tag with user: $caller"
 
-$newTag = @{
+$callerTag = @{
     Creator = $caller
+}
+
+$email = $eventGridEvent.data.claims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+$emailTag = @{
+    Email = $email
 }
 
 $tags = (Get-AzTag -ResourceId $resourceId)
@@ -47,7 +39,7 @@ if ($tags) {
         # if null no tags?
         if ($tags.properties.TagsProperty) {
             if (!($tags.properties.TagsProperty.ContainsKey('Creator')) ) {
-                Update-AzTag -ResourceId $resourceId -Operation Merge -Tag $newTag | Out-Null
+                Update-AzTag -ResourceId $resourceId -Operation Merge -Tag $callerTag | Out-Null
                 Write-Host "Added Creator tag with user: $caller"
             }
             else {
@@ -56,7 +48,15 @@ if ($tags) {
         }
         else {
             Write-Host "Added Creator tag with user: $caller"
-            New-AzTag -ResourceId $resourceId -Tag $newTag | Out-Null
+            New-AzTag -ResourceId $resourceId -Tag $callerTag | Out-Null
+        }
+
+        if (!($tags.properties.TagsProperty.ContainsKey('Email')) ) {
+            Update-AzTag -ResourceId $resourceId -Operation Merge -Tag $emailTag | Out-Null
+            Write-Host "Added Email tag with user: $email"
+        }
+        else {
+            Write-Host "Email tag already exists"
         }
     }
     else {

@@ -1,9 +1,10 @@
-$resourceGroupName = "awfunctionsdev"            # <-- REPLACE the variable values with your own values.
-$location = "australiasoutheast"                 # <-- Ensure that the location is a valid Azure location
-$storageAccountName = "awfunctionsdev"           # <-- Ensure the storage account name is unique
-$appServicePlanName = "AustraliaSoutheastPlan"   # <--
-$appInsightsName = "awfunctionsdev"              # <--
-$functionName = "awfunctionsdev"                 # <--
+$resourceGroupName = "BAMI_CostManagement_DO_NOT_DELETE"            # <-- REPLACE the variable values with your own values.
+$location = "centralus"                 # <-- Ensure that the location is a valid Azure location
+$storageAccountName = "bamicostmanagement8dc0"           # <-- Ensure the storage account name is unique
+$appServicePlanName = "ASP-BAMICostManagement-bb9b"   # <--
+$appInsightsName = "bamiResourceActionsDev"              # <--
+$functionName = "bamiResourceActions"                 # <--
+$eventGridSubscriptionName = "ResourceCreation"
 
 New-AzResourceGroup -Name $resourceGroupName -Location $location -Force -Verbose
 
@@ -12,12 +13,10 @@ $params = @{
     appServicePlanName = $appServicePlanName
     appInsightsName    = $appInsightsName
     functionName       = $functionName
+    eventGridSubscriptionName = $eventGridSubscriptionName
 }
 
 $output = New-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -TemplateFile .\azuredeploy.json -TemplateParameterObject $params -Verbose
-
-New-AzRoleAssignment -RoleDefinitionName "Reader" -ObjectId $output.Outputs.managedIdentityId.Value -ErrorAction SilentlyContinue -Verbose
-New-AzRoleAssignment -RoleDefinitionName "Tag Contributor" -ObjectId $output.Outputs.managedIdentityId.Value -ErrorAction SilentlyContinue -Verbose
 
 Push-Location
 Set-Location ..\functions

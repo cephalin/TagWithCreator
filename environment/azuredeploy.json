@@ -13,15 +13,21 @@
         },
         "functionName": {
             "type": "string"
+        },
+        "eventGridSubscriptionName": {
+            "type": "string",
+            "defaultValue": "ResourceCreation"
         }
     },
     "variables": {
+        "roleName": "Resource Group delete",
+        "roleDefName": "[guid(parameters('roleName'))]"
     },
     "resources": [
         {
             "name": "[parameters('storageAccountName')]",
             "type": "Microsoft.Storage/storageAccounts",
-            "apiVersion": "2019-06-01",
+            "apiVersion": "2023-05-01",
             "location": "[resourceGroup().location]",
             "kind": "StorageV2",
             "sku": {
@@ -103,6 +109,81 @@
             },
             "identity": {
                 "type": "SystemAssigned"
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleDefinitions",
+            "apiVersion": "2022-04-01",
+            "name": "[variables('roleDefName')]",
+            "properties": {
+              "roleName": "[parameters('roleName')]",
+              "type": "customRole",
+              "assignableScopes": [
+                "[subscription().id]"
+              ],
+              "permissions": [
+                {
+                  "actions": "Microsoft.Resources/subscriptions/resourceGroups/delete"
+                }
+              ]
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "Reader Role Assignment",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionName')), '2019-08-01', 'full').identity.principalId]"
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "Reader Role Assignment",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionName')), '2019-08-01', 'full').identity.principalId]"
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "Tag Contributor Role Assignment",
+            "properties": {
+                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '4a9ae827-6dc8-4573-8ac7-8239d42aa03f')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionName')), '2019-08-01', 'full').identity.principalId]"
+            }
+        },
+        {
+            "type": "Microsoft.EventGrid/eventSubscriptions",
+            "name": "[parameters('eventGridSubscriptionName')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites/functions', parameters('functionName'), parameters('eventGridSubscriptionName'))]"
+            ],
+            "apiVersion": "2020-04-01-preview",
+            "properties": {
+                "destination": {
+                    "endpointType": "AzureFunction",
+                    "properties": {
+                        "resourceId": "[resourceId('Microsoft.Web/sites/functions', parameters('functionName'), parameters('eventGridSubscriptionName'))]"
+                    }
+                },
+                "filter": {
+                    "includedEventTypes": [
+                        "Microsoft.Resources.ResourceWriteSuccess"
+                    ],
+                    "advancedFilters": [
+                        {
+                            "key": "data.operationName",
+                            "operatorType": "StringIn",
+                            "values": [
+                                "Microsoft.Resources/subscriptions/resourceGroups/write"
+                            ]
+                        }
+                    ]
+                },
+                "eventDeliverySchema": "EventGridSchema"
             }
         }
     ],
