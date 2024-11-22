@@ -3,7 +3,7 @@ param($Timer)
 
 # Get the current universal time in the default string format.
 $currentUTCtime = (Get-Date).ToUniversalTime()
-$expirationDays = 21
+$expirationDays = 1
 
 $groups = Get-AzResourceGroup
 
